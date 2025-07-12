@@ -80,7 +80,7 @@ header h1 {
 
 .main-content {
     display: grid;
-    grid-template-columns: 1fr 1fr 200px;
+    grid-template-columns: 4fr 1fr 4fr;
     gap: 30px;
 }
 
@@ -90,8 +90,8 @@ header h1 {
     gap: 20px;
 }
 
-.right-panel {
-    max-width: 200px;
+.middle-panel {
+    max-width: none;
 }
 
 section {
@@ -497,9 +497,8 @@ section h2 {
         grid-template-columns: 1fr 1fr;
     }
     
-    .right-panel {
+    .middle-panel {
         grid-column: 1 / -1;
-        max-width: none;
     }
     
     .inventory-grid {
