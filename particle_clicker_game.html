@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Physics Clicker</title>
+    <link rel="stylesheet" href="particle_clicker_css.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <div class="header-left">
+                <div class="save-controls">
+                    <button class="save-btn" id="save-btn">💾 Save</button>
+                    <button class="save-btn" id="load-btn">📁 Load</button>
+                    <button class="save-btn" id="new-game-btn">🆕 New Game</button>
+                </div>
+            </div>
+            <div class="header-center">
+                <h1>🔬 Particle Physics Clicker</h1>
+                <div class="energy-display">
+                    <span id="energy-count">Energy: 0</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="save-status" style="font-size: 0.9em; opacity: 0.8;"></div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <section class="clicker-section">
+                    <h2>Generate Particles</h2>
+                    <div class="clicker-buttons">
+                        <button class="clicker-btn" data-particle="up-quark">
+                            <span class="particle-icon">↑</span>
+                            <span>Up Quark</span>
+                        </button>
+                        <button class="clicker-btn" data-particle="down-quark">
+                            <span class="particle-icon">↓</span>
+                            <span>Down Quark</span>
+                        </button>
+                        <button class="clicker-btn" data-particle="electron">
+                            <span class="particle-icon">e⁻</span>
+                            <span>Electron</span>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="blueprints-section">
+                    <h2>Blueprints</h2>
+                    <div class="blueprints-grid" id="blueprints">
+                    </div>
+                </section>
+
+                <section class="shop-section" id="shop-section" style="display: none;">
+                    <h2>Generator Shop</h2>
+                    <div class="shop-grid" id="shop">
+                    </div>
+                </section>
+            </div>
+
+            <div class="middle-panel">
+                <section class="fusion-section">
+                    <h2>Fusion Chamber</h2>
+                    <div class="fusion-chamber" id="fusion-chamber">
+                        <div class="drop-zone" id="drop-zone">
+                            <p>Drag particles here to fuse them</p>
+                        </div>
+                        <div class="fusion-controls">
+                            <button class="fusion-btn" id="fusion-btn">🔥 FUSE</button>
+                            <button class="cancel-btn" id="cancel-btn">❌ CANCEL</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="right-panel">
+                <section class="inventory-section">
+                    <h2>Inventory</h2>
+                    <div class="inventory-grid" id="inventory">
+                    </div>
+                </section>
+                <section class="generators-section">
+                    <h2>Generators</h2>
+                    <div class="generators-grid" id="generators-display">
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    <script src="particle_clicker_js.js"></script>
+</body>
+</html>
