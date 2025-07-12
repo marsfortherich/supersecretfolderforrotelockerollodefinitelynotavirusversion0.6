@@ -521,7 +521,7 @@ function updateShop() {
 function buyGenerator(particle) {
     const baseCost = generatorBaseCosts[particle];
     const purchased = gameState.purchaseCount[particle];
-    const cost = Math.floor(baseCost * Math.pow(1.15, purchased));
+    const cost = Math.floor(baseCost * Math.pow(1.05, purchased));
 
     if (gameState.inventory.energy >= cost) {
         gameState.inventory.energy -= cost;
