@@ -478,7 +478,7 @@ function updateShop() {
 
     Object.entries(generatorBaseCosts).forEach(([particle, baseCost]) => {
         const purchased = gameState.purchaseCount[particle];
-        const cost = Math.floor(baseCost * Math.pow(1.15, purchased));
+        const cost = Math.floor(baseCost * Math.pow(1.05, purchased));
         const canAfford = gameState.inventory.energy >= cost;
 
         const shopItem = document.createElement('div');
