@@ -35,8 +35,74 @@ let gameState = {
     fusionFailures: 0,
     lastSave: Date.now(),
     lastEnergyUpdate: 0,
-    lastGeneratorUpdate: ''
+    lastGeneratorUpdate: '',
+    energyUpgrades: [],
+    energyMultiplier: 1
 };
+
+let lastInventoryState = {};
+let lastGeneratorState = {};
+let lastBlueprintState = {};
+
+function hasInventoryChanged() {
+    const currentState = JSON.stringify(gameState.inventory);
+    if (currentState !== lastInventoryState) {
+        lastInventoryState = currentState;
+        return true;
+    }
+    return false;
+}
+
+function hasGeneratorChanged() {
+    const currentState = JSON.stringify(gameState.generators);
+    if (currentState !== lastGeneratorState) {
+        lastGeneratorState = currentState;
+        return true;
+    }
+    return false;
+}
+
+function hasBlueprintStateChanged() {
+    const currentState = JSON.stringify({
+        inventory: gameState.inventory,
+        discovered: gameState.discoveredBlueprints
+    });
+    if (currentState !== lastBlueprintState) {
+        lastBlueprintState = currentState;
+        return true;
+    }
+    return false;
+}
+
+function updateGameState() {
+    let needsUIUpdate = false;
+
+    if (hasInventoryChanged()) {
+        updateInventory();
+        needsUIUpdate = true;
+    }
+
+    if (hasGeneratorChanged()) {
+        updateGeneratorDisplay();
+        needsUIUpdate = true;
+    }
+
+    if (hasBlueprintStateChanged()) {
+        updateBlueprints();
+        needsUIUpdate = true;
+    }
+
+    if (needsUIUpdate) {
+        updateUI();
+    }
+}
+
+function batchUpdate(updateFunction) {
+    requestAnimationFrame(() => {
+        updateFunction();
+        updateGameState();
+    });
+}
 
 const fusionRecipes = {
     'proton': {
@@ -86,17 +152,32 @@ const generatorCombinations = {
     'He': { '2H': 1, '3H': 1 }
 };
 
+const energyUpgradesList = [
+    { name: "Rutherford Scattering", multiplier: 2, cost: 100, description: "Energy Generators are twice as efficient" },
+    { name: "Fermi's Golden Rule", multiplier: 2, cost: 1000, description: "Energy Generators are twice as efficient" },
+    { name: "Bohr Model", multiplier: 2, cost: 10000, description: "Energy Generators are twice as efficient" },
+    { name: "Dirac Equation", multiplier: 2, cost: 100000, description: "Energy Generators are twice as efficient" },
+    { name: "Pauli Principle", multiplier: 2, cost: 1000000, description: "Energy Generators are twice as efficient" },
+    { name: "Feynman Diagrams", multiplier: 2, cost: 10000000, description: "Energy Generators are twice as efficient" },
+    { name: "Gell-Mann's Quarks", multiplier: 2, cost: 100000000, description: "Energy Generators are twice as efficient" },
+    { name: "Higgs Boson", multiplier: 2, cost: 1000000000, description: "Energy Generators are twice as efficient" }
+];
+
+
 function initGame() {
     loadGame();
     setupClickerButtons();
     setupFusionChamber();
     setupSaveButtons();
     updateInventory();
-    updateUI();
     updateBlueprints();
     updateGeneratorDisplay();
     startGenerators();
+    updateOwnedUpgrades(); 
+    updateUI();
     startAutoSave();
+    lastInventoryState = JSON.stringify(gameState.inventory);
+    lastGeneratorState = JSON.stringify(gameState.generators);
 }
 
 function setupClickerButtons() {
@@ -104,10 +185,9 @@ function setupClickerButtons() {
     clickerButtons.forEach(button => {
         button.addEventListener('click', () => {
             const particle = button.dataset.particle;
-            gameState.inventory[particle]++;
-            updateInventory();
-            updateBlueprints();
-            updateUI();
+            batchUpdate(() => {
+                gameState.inventory[particle]++;
+            });
         });
     });
 }
@@ -136,7 +216,6 @@ function setupFusionChamber() {
             gameState.fusionChamber.push(particleType);
             updateFusionChamber();
             updateInventory();
-            updateBlueprints();
             updateUI();
         }
     });
@@ -238,9 +317,18 @@ function removeFusionItem(index) {
     gameState.fusionChamber.splice(index, 1);
     updateFusionChamber();
     updateInventory();
-    updateBlueprints();
     updateUI();
 }
+
+function particlesMatch(required, actual) {
+    const requiredEntries = Object.entries(required);
+    const actualEntries = Object.entries(actual);
+
+    if (requiredEntries.length !== actualEntries.length) return false;
+
+    return requiredEntries.every(([particle, count]) => actual[particle] === count);
+}
+
 
 function performFusion() {
     if (gameState.fusionChamber.length === 0) return;
@@ -252,36 +340,19 @@ function performFusion() {
 
     let validFusion = null;
     Object.entries(fusionRecipes).forEach(([name, recipe]) => {
-        const recipeParticles = Object.keys(recipe.recipe);
-        const chamberParticles = Object.keys(chamberCounts);
-        
-        if (recipeParticles.length === chamberParticles.length) {
-            let isValidRecipe = true;
-            
-            recipeParticles.forEach(particle => {
-                if (chamberCounts[particle] !== recipe.recipe[particle]) {
-                    isValidRecipe = false;
-                }
-            });
-            
-            chamberParticles.forEach(particle => {
-                if (!recipe.recipe[particle]) {
-                    isValidRecipe = false;
-                }
-            });
-            
-            if (isValidRecipe) {
-                validFusion = { name, recipe };
-            }
+        if (particlesMatch(recipe.recipe, chamberCounts)) {
+            validFusion = { name, recipe };
         }
     });
 
     if (validFusion) {
         Object.entries(validFusion.recipe.result).forEach(([particle, amount]) => {
             gameState.inventory[particle] += amount;
+
             if (particle === 'energy' && !gameState.energyUnlocked) {
                 gameState.energyUnlocked = true;
                 document.getElementById('shop-section').style.display = 'block';
+                document.getElementById('energy-upgrades-section').style.display = 'block';
                 showMessage('Energy unlocked! Generator shop is now available!', 'success');
             }
         });
@@ -301,12 +372,12 @@ function performFusion() {
     } else {
         gameState.fusionChamber = [];
         gameState.fusionFailures++;
-        
+
         if (gameState.fusionFailures >= 5) {
             showFusionHint();
             gameState.fusionFailures = 0;
         }
-        
+
         showMessage('Fusion failed! Materials lost.', 'error');
     }
 
@@ -315,6 +386,7 @@ function performFusion() {
     updateBlueprints();
     updateUI();
 }
+
 
 function showFusionHint() {
     const unmanufacturedItems = Object.keys(fusionRecipes).filter(item => 
@@ -383,50 +455,78 @@ function canCraftViaBlueprints(targetParticle, neededAmount) {
     return false;
 }
 
+function canCraftFromInventoryOnly(requiredMaterials) {
+    return Object.entries(requiredMaterials).every(([particle, needed]) => {
+        return gameState.inventory[particle] >= needed;
+    });
+}
+
 function updateBlueprints() {
     const blueprintsGrid = document.getElementById('blueprints');
-    blueprintsGrid.innerHTML = '';
+    
+    const existingItems = blueprintsGrid.querySelectorAll('.blueprint-item');
+    
+    existingItems.forEach(item => {
+        const blueprintName = item.dataset.blueprint;
+        const recipe = fusionRecipes[blueprintName];
+        const canCraft = canCraftFromInventoryOnly(recipe.recipe);
+        
+        if (canCraft) {
+            item.classList.remove('unavailable');
+        } else {
+            item.classList.add('unavailable');
+        }
+    });
+    
+    if (gameState.discoveredBlueprints.length !== gameState.lastBlueprintCount) {
+        gameState.lastBlueprintCount = gameState.discoveredBlueprints.length;
+    }
 
+    const blueprintData = [];
+    
     Object.entries(fusionRecipes).forEach(([blueprintName, recipe]) => {
-        if (!gameState.manufacturedItems.includes(blueprintName)) {
+        if (!gameState.discoveredBlueprints.includes(blueprintName)) {
             return;
         }
 
-        const blueprintItem = document.createElement('div');
-        blueprintItem.className = 'blueprint-item';
+        const canCraft = canCraftFromInventoryOnly(recipe.recipe);
         
-        let canCraft = true;
-        Object.entries(recipe.recipe).forEach(([particle, needed]) => {
-            if (gameState.inventory[particle] < needed) {
-                canCraft = false;
-            }
+        blueprintData.push({
+            name: blueprintName,
+            recipe: recipe,
+            canCraft: canCraft
         });
-        
-        if (!canCraft) {
-            blueprintItem.classList.add('unavailable');
-        }
-        
-        blueprintItem.innerHTML = `
-            <div class="blueprint-name">${getParticleDisplayName(blueprintName)}</div>
+    });
+
+    const currentHTML = blueprintsGrid.innerHTML;
+    const newHTML = blueprintData.map(blueprint => `
+        <div class="blueprint-item ${!blueprint.canCraft ? 'unavailable' : ''}" 
+             data-blueprint="${blueprint.name}">
+            <div class="blueprint-name">${getParticleDisplayName(blueprint.name)}</div>
             <div class="blueprint-recipe">
-                ${Object.entries(recipe.recipe).map(([particle, count]) => 
+                ${Object.entries(blueprint.recipe.recipe).map(([particle, count]) => 
                     `${count}× ${getParticleDisplayName(particle)}`
                 ).join(' + ')}
             </div>
             <div class="blueprint-result">
-                → ${Object.entries(recipe.result).map(([particle, count]) => 
+                → ${Object.entries(blueprint.recipe.result).map(([particle, count]) => 
                     `${count}× ${getParticleDisplayName(particle)}`
                 ).join(' + ')}
             </div>
-            ${recipe.cost > 0 ? `<div class="fusion-cost">Cost: ${recipe.cost} Energy</div>` : ''}
-        `;
+            ${blueprint.recipe.cost > 0 ? `<div class="fusion-cost">Cost: ${blueprint.recipe.cost} Energy</div>` : ''}
+        </div>
+    `).join('');
 
-        blueprintItem.addEventListener('click', () => {
-            useBlueprint(blueprintName);
+    if (currentHTML !== newHTML) {
+        blueprintsGrid.innerHTML = newHTML;
+        
+        blueprintsGrid.querySelectorAll('.blueprint-item').forEach(item => {
+            const blueprintName = item.dataset.blueprint;
+            item.addEventListener('click', () => {
+                useBlueprint(blueprintName);
+            });
         });
-
-        blueprintsGrid.appendChild(blueprintItem);
-    });
+    }
 }
 
 function useBlueprint(blueprintName) {
@@ -474,23 +574,31 @@ function updateShop() {
     if (!gameState.energyUnlocked) return;
 
     const shopGrid = document.getElementById('shop');
-    shopGrid.innerHTML = '';
+    const currentShopState = {
+        energy: gameState.inventory.energy,
+        generators: {...gameState.generators},
+        purchaseCount: {...gameState.purchaseCount}
+    };
+    
+    if (JSON.stringify(currentShopState) === JSON.stringify(gameState.lastShopState)) {
+        return;
+    }
+    
+    gameState.lastShopState = currentShopState;
+    
+    const shopData = [];
 
     Object.entries(generatorBaseCosts).forEach(([particle, baseCost]) => {
         const purchased = gameState.purchaseCount[particle];
         const cost = Math.floor(baseCost * Math.pow(1.05, purchased));
         const canAfford = gameState.inventory.energy >= cost;
 
-        const shopItem = document.createElement('div');
-        shopItem.className = 'shop-item';
-        shopItem.innerHTML = `
-            <div class="shop-item-name">${getParticleDisplayName(particle)} Generator</div>
-            <div class="shop-item-cost ${canAfford ? 'affordable' : 'expensive'}">Cost: ${cost} Energy</div>
-            <button class="shop-btn" ${!canAfford ? 'disabled' : ''} onclick="buyGenerator('${particle}')">
-                ${canAfford ? 'Buy' : 'Not enough energy'}
-            </button>
-        `;
-        shopGrid.appendChild(shopItem);
+        shopData.push({
+            type: 'generator',
+            particle: particle,
+            cost: cost,
+            canAfford: canAfford
+        });
     });
 
     Object.entries(generatorCombinations).forEach(([particle, combination]) => {
@@ -505,17 +613,43 @@ function updateShop() {
         });
         combinationText = combinationText.slice(0, -3);
 
-        const shopItem = document.createElement('div');
-        shopItem.className = 'shop-item';
-        shopItem.innerHTML = `
-            <div class="shop-item-name">${getParticleDisplayName(particle)} Generator</div>
-            <div class="shop-item-cost ${canCombine ? 'affordable' : 'expensive'}">Cost: ${combinationText}</div>
-            <button class="shop-btn" ${!canCombine ? 'disabled' : ''} onclick="combineGenerators('${particle}')">
-                ${canCombine ? 'Combine' : 'Not enough Generators'}
-            </button>
-        `;
-        shopGrid.appendChild(shopItem);
+        shopData.push({
+            type: 'combination',
+            particle: particle,
+            combinationText: combinationText,
+            canCombine: canCombine
+        });
     });
+
+    const newHTML = shopData.map(item => {
+        if (item.type === 'generator') {
+            return `
+                <div class="shop-item">
+                    <div class="shop-item-name">${getParticleDisplayName(item.particle)} Generator</div>
+                    <div class="shop-item-cost ${item.canAfford ? 'affordable' : 'expensive'}">Cost: ${item.cost} Energy</div>
+                    <button class="shop-btn" ${!item.canAfford ? 'disabled' : ''} 
+                            onclick="buyGenerator('${item.particle}')">
+                        ${item.canAfford ? 'Buy' : 'Not enough energy'}
+                    </button>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="shop-item">
+                    <div class="shop-item-name">${getParticleDisplayName(item.particle)} Generator</div>
+                    <div class="shop-item-cost ${item.canCombine ? 'affordable' : 'expensive'}">Cost: ${item.combinationText}</div>
+                    <button class="shop-btn" ${!item.canCombine ? 'disabled' : ''} 
+                            onclick="combineGenerators('${item.particle}')">
+                        ${item.canCombine ? 'Combine' : 'Not enough Generators'}
+                    </button>
+                </div>
+            `;
+        }
+    }).join('');
+
+    if (shopGrid.innerHTML !== newHTML) {
+        shopGrid.innerHTML = newHTML;
+    }
 }
 
 function buyGenerator(particle) {
@@ -564,16 +698,105 @@ function combineGenerators(particle) {
 
 function startGenerators() {
     setInterval(() => {
+        let inventoryChanged = false;
+        
         Object.entries(gameState.generators).forEach(([particle, count]) => {
             if (count > 0) {
-                gameState.inventory[particle] += count;
+                let gain = count;
+                if (particle === 'energy') {
+                    gain *= gameState.energyMultiplier;
+                }
+                gameState.inventory[particle] += gain;
+                inventoryChanged = true;
             }
         });
-        updateInventory();
-        updateBlueprints();
-        updateUI();
+        
+        if (inventoryChanged) {
+            updateInventory();
+            document.getElementById('energy-count').textContent = `Energy: ${gameState.inventory.energy}`;
+            
+            const now = Date.now();
+            if (now - (gameState.lastShopUpdate || 0) > 2000) {
+                updateShop();
+                gameState.lastShopUpdate = now;
+            }
+        }
     }, 1000);
 }
+
+function updateEnergyUpgrades() {
+    if (!gameState.energyUnlocked) return;
+
+    document.getElementById('energy-upgrades-section').style.display = 'block';
+
+    const upgradesGrid = document.getElementById('energy-upgrades-grid');
+    upgradesGrid.innerHTML = '';
+
+    energyUpgradesList.forEach((upgrade, index) => {
+        if (gameState.energyUpgrades.includes(upgrade.name)) return;
+
+        const canAfford = gameState.inventory.energy >= upgrade.cost;
+
+        const item = document.createElement('div');
+        item.className = 'shop-item';
+        item.innerHTML = `
+            <div class="shop-item-name">${upgrade.name}</div>
+            <div class="shop-item-cost ${canAfford ? 'affordable' : 'expensive'}">
+                Cost: ${upgrade.cost.toLocaleString()} Energy
+            </div>
+            <button class="shop-btn" ${!canAfford ? 'disabled' : ''} 
+                onclick="buyEnergyUpgrade(${index})">
+                Buy
+            </button>
+        `;
+
+        upgradesGrid.appendChild(item);
+    });
+}
+
+function buyEnergyUpgrade(index) {
+    const upgrade = energyUpgradesList[index];
+    if (gameState.energyUpgrades.includes(upgrade.name)) return;
+    if (gameState.inventory.energy < upgrade.cost) return;
+
+    gameState.inventory.energy -= upgrade.cost;
+    gameState.energyUpgrades.push(upgrade.name);
+    gameState.energyMultiplier *= upgrade.multiplier;
+
+    showMessage(`${upgrade.name} purchased! Energy generators are twice as efficient.`, 'success');
+
+    updateEnergyUpgrades();
+    updateOwnedUpgrades();
+    updateUI();
+}
+
+function updateOwnedUpgrades() {
+    const section = document.getElementById('owned-upgrades-section');
+    const grid = document.getElementById('owned-upgrades-grid');
+
+    if (!gameState.energyUnlocked || gameState.energyUpgrades.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    grid.innerHTML = '';
+
+    gameState.energyUpgrades.forEach(name => {
+        const upgrade = energyUpgradesList.find(u => u.name === name);
+        if (!upgrade) return;
+
+        const item = document.createElement('div');
+        item.className = 'shop-item';
+        item.innerHTML = `
+            <div class="shop-item-name">${upgrade.name}</div>
+            <div class="shop-item-description">${upgrade.description}</div>
+        `;
+        grid.appendChild(item);
+    });
+}
+
+
 
 function startAutoSave() {
     setInterval(() => {
@@ -593,37 +816,73 @@ function saveGame() {
     }
 }
 
+let saveTimeout;
+function debouncedSave() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        saveGame();
+    }, 1000);
+}
+
+let uiUpdateTimeout;
+function debouncedUIUpdate() {
+    clearTimeout(uiUpdateTimeout);
+    uiUpdateTimeout = setTimeout(() => {
+        updateUI();
+    }, 100);
+}
+
 function loadGame() {
     try {
         const saveData = localStorage.getItem('particleClickerSave');
-        if (saveData) {
-            const loadedState = JSON.parse(saveData);
 
-            if (loadedState.inventory && loadedState.generators) {
-                gameState = { ...gameState, ...loadedState };
-            }
-
-            if (gameState.energyUnlocked) {
-                document.getElementById('shop-section').style.display = 'block';
-            }
-
-            showSaveStatus('Game loaded!', 'success');
-        } else {
+        if (!saveData) {
             showSaveStatus('No saved game found.', 'info');
+            return;
         }
+
+        const loadedState = JSON.parse(saveData);
+
+        if (!loadedState.inventory || !loadedState.generators) {
+            showSaveStatus('Save data corrupted.', 'error');
+            return;
+        }
+
+        gameState = {
+            ...gameState,
+            ...loadedState
+        };
+
+        if (!gameState.purchaseCount) gameState.purchaseCount = { 'up-quark': 0, 'down-quark': 0, 'electron': 0 };
+        if (!gameState.energyUpgrades) gameState.energyUpgrades = [];
+        if (typeof gameState.energyMultiplier !== 'number') gameState.energyMultiplier = 1;
+        if (!gameState.fusionChamber) gameState.fusionChamber = [];
+        if (!gameState.manufacturedItems) gameState.manufacturedItems = [];
+        if (!gameState.discoveredBlueprints) gameState.discoveredBlueprints = [];
+
+        if (gameState.energyUnlocked) {
+            document.getElementById('shop-section').style.display = 'block';
+            document.getElementById('energy-upgrades-section').style.display = 'block';
+        }
+
+        updateInventory();
+        updateGeneratorDisplay();
+        updateBlueprints();
+        updateEnergyUpgrades();
+        updateOwnedUpgrades(); 
+        updateUI();
+
+        showSaveStatus('Game loaded!', 'success');
     } catch (error) {
         console.error('Load error:', error);
         showSaveStatus('Loading failed!', 'error');
     }
 }
 
+
 function loadGameDialog() {
     if (confirm('Do you want to load the saved game? Current progress will be lost!')) {
         loadGame();
-        updateInventory();
-        updateUI();
-        updateBlueprints();
-        updateGeneratorDisplay();
     }
 }
 
@@ -664,18 +923,55 @@ function newGame() {
             manufacturedItems: [],
             energyUnlocked: false,
             fusionFailures: 0,
+            energyUpgrades: [],
+            energyMultiplier: 1,
             lastSave: Date.now()
         };
 
         document.getElementById('shop-section').style.display = 'none';
+        document.getElementById('energy-upgrades-section').style.display = 'none';
+        document.getElementById('owned-upgrades-section').style.display = 'none';
+
         updateInventory();
         updateUI();
         updateBlueprints();
         updateGeneratorDisplay();
-        showSaveStatus('New Game Started!', 'success');
+        updateEnergyUpgrades();
+        updateOwnedUpgrades();
+
     }
 }
 
+function createVirtualInventory() {
+    const inventoryGrid = document.getElementById('inventory');
+    const items = Object.entries(gameState.inventory).filter(([, count]) => count > 0);
+    
+    const visibleItems = items.slice(0, 50);
+    
+    inventoryGrid.innerHTML = visibleItems.map(([particle, count]) => `
+        <div class="inventory-item" draggable="true" data-particle="${particle}">
+            <div class="item-name">${getParticleDisplayName(particle)}</div>
+            <div class="item-count">${count}</div>
+        </div>
+    `).join('');
+    
+    inventoryGrid.querySelectorAll('.inventory-item').forEach(item => {
+        const particle = item.dataset.particle;
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', particle);
+            item.classList.add('dragging');
+        });
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+        });
+    });
+}
+
+function cleanupEventListeners() {
+    document.querySelectorAll('.blueprint-item, .shop-item, .inventory-item').forEach(item => {
+        item.replaceWith(item.cloneNode(true));
+    });
+}
 
 function showSaveStatus(message, type) {
     const statusElement = document.getElementById('save-status');
@@ -688,17 +984,29 @@ function showSaveStatus(message, type) {
 }
 
 function updateUI() {
-    document.getElementById('energy-count').textContent = `Energy: ${gameState.inventory.energy}`;
+    const energyElement = document.getElementById('energy-count');
+    const newEnergyText = `Energy: ${gameState.inventory.energy}`;
     
-    if (gameState.energyUnlocked && document.getElementById('shop-section').style.display !== 'none') {
-        if (gameState.lastEnergyUpdate !== gameState.inventory.energy || 
-            gameState.lastGeneratorUpdate !== JSON.stringify(gameState.generators)) {
+    if (energyElement.textContent !== newEnergyText) {
+        energyElement.textContent = newEnergyText;
+    }
+    
+    if (gameState.energyUnlocked) {
+        const now = Date.now();
+        const timeSinceLastShopUpdate = now - (gameState.lastShopUpdate || 0);
+        
+        if (timeSinceLastShopUpdate > 2000) {
             updateShop();
-            gameState.lastEnergyUpdate = gameState.inventory.energy;
-            gameState.lastGeneratorUpdate = JSON.stringify(gameState.generators);
+            gameState.lastShopUpdate = now;
         }
     }
+    
+    if (Date.now() - (gameState.lastUpgradeCheck || 0) > 5000) {
+        updateEnergyUpgrades();
+        gameState.lastUpgradeCheck = Date.now();
+    }
 }
+
 
 function getParticleDisplayName(particle) {
     const displayNames = {
@@ -727,7 +1035,7 @@ function showMessage(message, type) {
     
     setTimeout(() => {
         messageDiv.remove();
-    }, 3000);
+    }, 2000);
 }
 
 document.addEventListener('DOMContentLoaded', initGame);
