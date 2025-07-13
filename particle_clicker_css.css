@@ -110,8 +110,9 @@ section h2 {
 
 .clicker-buttons {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     flex-wrap: wrap;
+    max-height: 100px;
 }
 
 .clicker-btn {
@@ -157,7 +158,7 @@ section h2 {
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
-    max-height: 500px;
+    max-height: 482px;
     overflow-y: auto;
 }
 
@@ -200,7 +201,8 @@ section h2 {
 .fusion-chamber {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
+    max-height: 600px;
 }
 
 .drop-zone {
@@ -300,8 +302,8 @@ section h2 {
 .blueprints-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-    max-height: 400px;
+    gap: 10px;
+    max-height: 300px;
     overflow-y: auto;
 }
 
@@ -350,7 +352,7 @@ section h2 {
 .shop-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
+    gap: 10px;
 }
 
 .shop-item {
@@ -485,6 +487,20 @@ section h2 {
 
 .shop-item-cost.expensive {
     color: #e53e3e;
+}
+
+.shop-item-description {
+    font-size: 0.9em;
+    color: #4a5568;
+    margin: 5px 0;
+}
+
+.blueprint-item, .shop-item {
+    transition: none;
+}
+
+.blueprint-item.updating {
+    pointer-events: none;
 }
 
 @keyframes fadeIn {
