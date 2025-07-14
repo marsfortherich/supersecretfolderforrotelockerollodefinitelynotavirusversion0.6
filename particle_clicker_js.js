@@ -44,6 +44,108 @@ let lastInventoryState = {};
 let lastGeneratorState = {};
 let lastBlueprintState = {};
 
+
+const fusionRecipes = {
+    'proton': {
+        recipe: { 'up-quark': 2, 'down-quark': 1 },
+        result: { 'proton': 1 },
+        cost: 0
+    },
+    'neutron': {
+        recipe: { 'up-quark': 1, 'down-quark': 2 },
+        result: { 'neutron': 1 },
+        cost: 0
+    },
+    '1H': {
+        recipe: { 'proton': 1, 'electron': 1 },
+        result: { '1H': 1 },
+        cost: 0
+    },
+    '2H': {
+        recipe: { 'proton': 1, 'neutron': 1, 'electron': 1 },
+        result: { '2H': 1 },
+        cost: 0
+    },
+    '3H': {
+        recipe: { 'proton': 1, 'neutron': 2, 'electron': 1 },
+        result: { '3H': 1 },
+        cost: 0
+    },
+    'He+neutron+energy': {
+        recipe: { '2H': 1, '3H': 1 },
+        result: { 'He': 1, 'neutron': 1, 'energy': 1 },
+        cost: 0
+    }
+};
+
+const generatorBaseCosts = {
+    'up-quark': 5,
+    'down-quark': 5,
+    'electron': 5
+};
+
+const generatorCombinations = {
+    'proton': { 'up-quark': 2, 'down-quark': 1 },
+    'neutron': { 'up-quark': 1, 'down-quark': 2 },
+    '1H': { 'proton': 1, 'electron': 1 },
+    '2H': { 'proton': 1, 'neutron': 1, 'electron': 1 },
+    '3H': { 'proton': 1, 'neutron': 2, 'electron': 1 },
+    'He': { '2H': 1, '3H': 1 }
+};
+
+const energyUpgradesList = [
+    { name: "Rutherford Scattering", multiplier: 2, cost: 100, description: "Energy Generators are twice as efficient" },
+    { name: "Fermi's Golden Rule", multiplier: 2, cost: 1000, description: "Energy Generators are twice as efficient" },
+    { name: "Bohr Model", multiplier: 2, cost: 10000, description: "Energy Generators are twice as efficient" },
+    { name: "Dirac Equation", multiplier: 2, cost: 100000, description: "Energy Generators are twice as efficient" },
+    { name: "Pauli Principle", multiplier: 2, cost: 1000000, description: "Energy Generators are twice as efficient" },
+    { name: "Feynman Diagrams", multiplier: 2, cost: 10000000, description: "Energy Generators are twice as efficient" },
+    { name: "Gell-Mann's Quarks", multiplier: 2, cost: 100000000, description: "Energy Generators are twice as efficient" },
+    { name: "Higgs Boson", multiplier: 2, cost: 1000000000, description: "Energy Generators are twice as efficient" }
+];
+
+const particleDisplayNames = {
+    'up-quark': 'Up Quark',
+    'down-quark': 'Down Quark',
+    'electron': 'Electron',
+    'proton': 'Proton',
+    'neutron': 'Neutron',
+    '1H': 'Hydrogen-1',
+    '2H': 'Deuterium',
+    '3H': 'Tritium',
+    'He': 'Helium',
+    'energy': 'Energy',
+    'He+neutron+energy': 'Helium + Neutron + Energy'
+};
+
+
+function getParticleDisplayName(particle) {
+    return particleDisplayNames[particle] || particle;
+}
+
+function showMessage(message, type) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `${type}-message`;
+    messageDiv.textContent = message;
+    
+    const fusionSection = document.querySelector('.fusion-section');
+    fusionSection.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.remove();
+    }, 2000);
+}
+
+function showSaveStatus(message, type) {
+    const statusElement = document.getElementById('save-status');
+    statusElement.textContent = message;
+    statusElement.style.color = type === 'success' ? '#38a169' : '#e53e3e';
+    
+    setTimeout(() => {
+        statusElement.textContent = '';
+    }, 3000);
+}
+
 function hasInventoryChanged() {
     const currentState = JSON.stringify(gameState.inventory);
     if (currentState !== lastInventoryState) {
@@ -104,143 +206,6 @@ function batchUpdate(updateFunction) {
     });
 }
 
-const fusionRecipes = {
-    'proton': {
-        recipe: { 'up-quark': 2, 'down-quark': 1 },
-        result: { 'proton': 1 },
-        cost: 0
-    },
-    'neutron': {
-        recipe: { 'up-quark': 1, 'down-quark': 2 },
-        result: { 'neutron': 1 },
-        cost: 0
-    },
-    '1H': {
-        recipe: { 'proton': 1, 'electron': 1 },
-        result: { '1H': 1 },
-        cost: 0
-    },
-    '2H': {
-        recipe: { 'proton': 1, 'neutron': 1, 'electron': 1 },
-        result: { '2H': 1 },
-        cost: 0
-    },
-    '3H': {
-        recipe: { 'proton': 1, 'neutron': 2, 'electron': 1 },
-        result: { '3H': 1 },
-        cost: 0
-    },
-    'He+energy': {
-        recipe: { '2H': 1, '3H': 1 },
-        result: { 'He': 1, 'neutron': 1, 'energy': 1 },
-        cost: 0
-    }
-};
-
-const generatorBaseCosts = {
-    'up-quark': 5,
-    'down-quark': 5,
-    'electron': 5
-};
-
-const generatorCombinations = {
-    'proton': { 'up-quark': 2, 'down-quark': 1 },
-    'neutron': { 'up-quark': 1, 'down-quark': 2 },
-    '1H': { 'proton': 1, 'electron': 1 },
-    '2H': { 'proton': 1, 'neutron': 1, 'electron': 1 },
-    '3H': { 'proton': 1, 'neutron': 2, 'electron': 1 },
-    'He': { '2H': 1, '3H': 1 }
-};
-
-const energyUpgradesList = [
-    { name: "Rutherford Scattering", multiplier: 2, cost: 100, description: "Energy Generators are twice as efficient" },
-    { name: "Fermi's Golden Rule", multiplier: 2, cost: 1000, description: "Energy Generators are twice as efficient" },
-    { name: "Bohr Model", multiplier: 2, cost: 10000, description: "Energy Generators are twice as efficient" },
-    { name: "Dirac Equation", multiplier: 2, cost: 100000, description: "Energy Generators are twice as efficient" },
-    { name: "Pauli Principle", multiplier: 2, cost: 1000000, description: "Energy Generators are twice as efficient" },
-    { name: "Feynman Diagrams", multiplier: 2, cost: 10000000, description: "Energy Generators are twice as efficient" },
-    { name: "Gell-Mann's Quarks", multiplier: 2, cost: 100000000, description: "Energy Generators are twice as efficient" },
-    { name: "Higgs Boson", multiplier: 2, cost: 1000000000, description: "Energy Generators are twice as efficient" }
-];
-
-
-function initGame() {
-    loadGame();
-    setupClickerButtons();
-    setupFusionChamber();
-    setupSaveButtons();
-    updateInventory();
-    updateBlueprints();
-    updateGeneratorDisplay();
-    startGenerators();
-    updateOwnedUpgrades(); 
-    updateUI();
-    startAutoSave();
-    lastInventoryState = JSON.stringify(gameState.inventory);
-    lastGeneratorState = JSON.stringify(gameState.generators);
-}
-
-function setupClickerButtons() {
-    const clickerButtons = document.querySelectorAll('.clicker-btn');
-    clickerButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const particle = button.dataset.particle;
-            batchUpdate(() => {
-                gameState.inventory[particle]++;
-            });
-        });
-    });
-}
-
-function setupFusionChamber() {
-    const dropZone = document.getElementById('drop-zone');
-    const fusionBtn = document.getElementById('fusion-btn');
-    const cancelBtn = document.getElementById('cancel-btn');
-
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        
-        const particleType = e.dataTransfer.getData('text/plain');
-        if (gameState.inventory[particleType] > 0) {
-            gameState.inventory[particleType]--;
-            gameState.fusionChamber.push(particleType);
-            updateFusionChamber();
-            updateInventory();
-            updateUI();
-        }
-    });
-
-    fusionBtn.addEventListener('click', performFusion);
-    cancelBtn.addEventListener('click', cancelFusion);
-}
-
-function setupSaveButtons() {
-    document.getElementById('save-btn').addEventListener('click', saveGame);
-    document.getElementById('load-btn').addEventListener('click', loadGameDialog);
-    document.getElementById('new-game-btn').addEventListener('click', newGame);
-}
-
-function cancelFusion() {
-    gameState.fusionChamber.forEach(particle => {
-        gameState.inventory[particle]++;
-    });
-    gameState.fusionChamber = [];
-    updateFusionChamber();
-    updateInventory();
-    updateBlueprints();
-    updateUI();
-}
-
 function updateInventory() {
     const inventoryGrid = document.getElementById('inventory');
     inventoryGrid.innerHTML = '';
@@ -286,6 +251,78 @@ function updateGeneratorDisplay() {
     });
 }
 
+function startGenerators() {
+    setInterval(() => {
+        let inventoryChanged = false;
+        
+        Object.entries(gameState.generators).forEach(([particle, count]) => {
+            if (count > 0) {
+                let gain = count;
+                if (particle === 'energy') {
+                    gain *= gameState.energyMultiplier;
+                }
+                gameState.inventory[particle] += gain;
+                inventoryChanged = true;
+            }
+        });
+        
+        if (inventoryChanged) {
+            batchUpdate(() => {
+                document.getElementById('energy-count').textContent = `Energy: ${gameState.inventory.energy}`;
+                
+                const now = Date.now();
+                if (now - (gameState.lastShopUpdate || 0) > 2000) {
+                    updateShop();
+                    gameState.lastShopUpdate = now;
+                }
+            });
+        }
+    }, 1000);
+}
+
+function buyGenerator(particle) {
+    const baseCost = generatorBaseCosts[particle];
+    const purchased = gameState.purchaseCount[particle];
+    const cost = Math.floor(baseCost * Math.pow(1.05, purchased));
+
+    if (gameState.inventory.energy >= cost) {
+        batchUpdate(() => {
+            gameState.inventory.energy -= cost;
+            gameState.generators[particle]++;
+            gameState.purchaseCount[particle]++;
+            updateShop();
+        });
+    }
+}
+
+function combineGenerators(particle) {
+    const combination = generatorCombinations[particle];
+    let canCombine = true;
+
+    Object.entries(combination).forEach(([requiredParticle, count]) => {
+        if (gameState.generators[requiredParticle] < count) {
+            canCombine = false;
+        }
+    });
+
+    if (canCombine) {
+        batchUpdate(() => {
+            Object.entries(combination).forEach(([requiredParticle, count]) => {
+                gameState.generators[requiredParticle] -= count;
+            });
+
+            if (particle === 'He') {
+                gameState.generators['He']++;
+                gameState.generators['neutron']++;
+                gameState.generators['energy']++;
+            } else {
+                gameState.generators[particle]++;
+            }
+            updateShop();
+        });
+    }
+}
+
 function updateFusionChamber() {
     const dropZone = document.getElementById('drop-zone');
     const fusionBtn = document.getElementById('fusion-btn');
@@ -312,12 +349,22 @@ function updateFusionChamber() {
 }
 
 function removeFusionItem(index) {
-    const particle = gameState.fusionChamber[index];
-    gameState.inventory[particle]++;
-    gameState.fusionChamber.splice(index, 1);
-    updateFusionChamber();
-    updateInventory();
-    updateUI();
+    batchUpdate(() => {
+        const particle = gameState.fusionChamber[index];
+        gameState.inventory[particle]++;
+        gameState.fusionChamber.splice(index, 1);
+        updateFusionChamber();
+    });
+}
+
+function cancelFusion() {
+    batchUpdate(() => {
+        gameState.fusionChamber.forEach(particle => {
+            gameState.inventory[particle]++;
+        });
+        gameState.fusionChamber = [];
+        updateFusionChamber();
+    });
 }
 
 function particlesMatch(required, actual) {
@@ -328,7 +375,6 @@ function particlesMatch(required, actual) {
 
     return requiredEntries.every(([particle, count]) => actual[particle] === count);
 }
-
 
 function performFusion() {
     if (gameState.fusionChamber.length === 0) return;
@@ -381,12 +427,10 @@ function performFusion() {
         showMessage('Fusion failed! Materials lost.', 'error');
     }
 
-    updateFusionChamber();
-    updateInventory();
-    updateBlueprints();
-    updateUI();
+    batchUpdate(() => {
+        updateFusionChamber();
+    });
 }
-
 
 function showFusionHint() {
     const unmanufacturedItems = Object.keys(fusionRecipes).filter(item => 
@@ -465,7 +509,6 @@ function updateBlueprints() {
     const blueprintsGrid = document.getElementById('blueprints');
     
     const existingItems = blueprintsGrid.querySelectorAll('.blueprint-item');
-    
     existingItems.forEach(item => {
         const blueprintName = item.dataset.blueprint;
         const recipe = fusionRecipes[blueprintName];
@@ -480,8 +523,12 @@ function updateBlueprints() {
     
     if (gameState.discoveredBlueprints.length !== gameState.lastBlueprintCount) {
         gameState.lastBlueprintCount = gameState.discoveredBlueprints.length;
+        rebuildBlueprints();
     }
+}
 
+function rebuildBlueprints() {
+    const blueprintsGrid = document.getElementById('blueprints');
     const blueprintData = [];
     
     Object.entries(fusionRecipes).forEach(([blueprintName, recipe]) => {
@@ -498,11 +545,9 @@ function updateBlueprints() {
         });
     });
 
-    const currentHTML = blueprintsGrid.innerHTML;
-    const newHTML = blueprintData.map(blueprint => `
+    blueprintsGrid.innerHTML = blueprintData.map(blueprint => `
         <div class="blueprint-item ${!blueprint.canCraft ? 'unavailable' : ''}" 
              data-blueprint="${blueprint.name}">
-            <div class="blueprint-name">${getParticleDisplayName(blueprint.name)}</div>
             <div class="blueprint-recipe">
                 ${Object.entries(blueprint.recipe.recipe).map(([particle, count]) => 
                     `${count}× ${getParticleDisplayName(particle)}`
@@ -516,17 +561,14 @@ function updateBlueprints() {
             ${blueprint.recipe.cost > 0 ? `<div class="fusion-cost">Cost: ${blueprint.recipe.cost} Energy</div>` : ''}
         </div>
     `).join('');
-
-    if (currentHTML !== newHTML) {
-        blueprintsGrid.innerHTML = newHTML;
-        
-        blueprintsGrid.querySelectorAll('.blueprint-item').forEach(item => {
-            const blueprintName = item.dataset.blueprint;
-            item.addEventListener('click', () => {
-                useBlueprint(blueprintName);
-            });
+    
+    // Add event listeners
+    blueprintsGrid.querySelectorAll('.blueprint-item').forEach(item => {
+        const blueprintName = item.dataset.blueprint;
+        item.addEventListener('click', () => {
+            useBlueprint(blueprintName);
         });
-    }
+    });
 }
 
 function useBlueprint(blueprintName) {
@@ -561,10 +603,9 @@ function useBlueprint(blueprintName) {
             gameState.manufacturedItems.push(blueprintName);
         }
 
-        showMessage(`${getParticleDisplayName(blueprintName)} fused!`, 'success');
-        updateInventory();
-        updateBlueprints();
-        updateUI();
+        batchUpdate(() => {
+            showMessage(`${getParticleDisplayName(blueprintName)} fused!`, 'success');
+        });
     } else {
         showMessage('Not enough materials for this blueprint!', 'error');
     }
@@ -652,78 +693,6 @@ function updateShop() {
     }
 }
 
-function buyGenerator(particle) {
-    const baseCost = generatorBaseCosts[particle];
-    const purchased = gameState.purchaseCount[particle];
-    const cost = Math.floor(baseCost * Math.pow(1.05, purchased));
-
-    if (gameState.inventory.energy >= cost) {
-        gameState.inventory.energy -= cost;
-        gameState.generators[particle]++;
-        gameState.purchaseCount[particle]++;
-        updateShop();
-        updateGeneratorDisplay();
-        updateUI();
-    }
-}
-
-function combineGenerators(particle) {
-    const combination = generatorCombinations[particle];
-    let canCombine = true;
-
-    Object.entries(combination).forEach(([requiredParticle, count]) => {
-        if (gameState.generators[requiredParticle] < count) {
-            canCombine = false;
-        }
-    });
-
-    if (canCombine) {
-        Object.entries(combination).forEach(([requiredParticle, count]) => {
-            gameState.generators[requiredParticle] -= count;
-        });
-
-        if (particle === 'He') {
-            gameState.generators['He']++;
-            gameState.generators['neutron']++;
-            gameState.generators['energy']++;
-        } else {
-            gameState.generators[particle]++;
-        }
-
-        updateShop();
-        updateGeneratorDisplay();
-        updateUI();
-    }
-}
-
-function startGenerators() {
-    setInterval(() => {
-        let inventoryChanged = false;
-        
-        Object.entries(gameState.generators).forEach(([particle, count]) => {
-            if (count > 0) {
-                let gain = count;
-                if (particle === 'energy') {
-                    gain *= gameState.energyMultiplier;
-                }
-                gameState.inventory[particle] += gain;
-                inventoryChanged = true;
-            }
-        });
-        
-        if (inventoryChanged) {
-            updateInventory();
-            document.getElementById('energy-count').textContent = `Energy: ${gameState.inventory.energy}`;
-            
-            const now = Date.now();
-            if (now - (gameState.lastShopUpdate || 0) > 2000) {
-                updateShop();
-                gameState.lastShopUpdate = now;
-            }
-        }
-    }, 1000);
-}
-
 function updateEnergyUpgrades() {
     if (!gameState.energyUnlocked) return;
 
@@ -763,11 +732,11 @@ function buyEnergyUpgrade(index) {
     gameState.energyUpgrades.push(upgrade.name);
     gameState.energyMultiplier *= upgrade.multiplier;
 
-    showMessage(`${upgrade.name} purchased! Energy generators are twice as efficient.`, 'success');
-
-    updateEnergyUpgrades();
-    updateOwnedUpgrades();
-    updateUI();
+    batchUpdate(() => {
+        showMessage(`${upgrade.name} purchased! Energy generators are twice as efficient.`, 'success');
+        updateEnergyUpgrades();
+        updateOwnedUpgrades();
+    });
 }
 
 function updateOwnedUpgrades() {
@@ -796,12 +765,28 @@ function updateOwnedUpgrades() {
     });
 }
 
-
-
-function startAutoSave() {
-    setInterval(() => {
-        saveGame();
-    }, 60000);
+function updateUI() {
+    const energyElement = document.getElementById('energy-count');
+    const newEnergyText = `Energy: ${gameState.inventory.energy}`;
+    
+    if (energyElement.textContent !== newEnergyText) {
+        energyElement.textContent = newEnergyText;
+    }
+    
+    if (gameState.energyUnlocked) {
+        const now = Date.now();
+        const timeSinceLastShopUpdate = now - (gameState.lastShopUpdate || 0);
+        
+        if (timeSinceLastShopUpdate > 2000) {
+            updateShop();
+            gameState.lastShopUpdate = now;
+        }
+    }
+    
+    if (Date.now() - (gameState.lastUpgradeCheck || 0) > 5000) {
+        updateEnergyUpgrades();
+        gameState.lastUpgradeCheck = Date.now();
+    }
 }
 
 function saveGame() {
@@ -814,22 +799,6 @@ function saveGame() {
         console.error('Save error:', error);
         showSaveStatus('Save failed!', 'error');
     }
-}
-
-let saveTimeout;
-function debouncedSave() {
-    clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(() => {
-        saveGame();
-    }, 1000);
-}
-
-let uiUpdateTimeout;
-function debouncedUIUpdate() {
-    clearTimeout(uiUpdateTimeout);
-    uiUpdateTimeout = setTimeout(() => {
-        updateUI();
-    }, 100);
 }
 
 function loadGame() {
@@ -868,8 +837,9 @@ function loadGame() {
         updateInventory();
         updateGeneratorDisplay();
         updateBlueprints();
+        rebuildBlueprints();
         updateEnergyUpgrades();
-        updateOwnedUpgrades(); 
+        updateOwnedUpgrades();
         updateUI();
 
         showSaveStatus('Game loaded!', 'success');
@@ -878,7 +848,6 @@ function loadGame() {
         showSaveStatus('Loading failed!', 'error');
     }
 }
-
 
 function loadGameDialog() {
     if (confirm('Do you want to load the saved game? Current progress will be lost!')) {
@@ -938,104 +907,79 @@ function newGame() {
         updateGeneratorDisplay();
         updateEnergyUpgrades();
         updateOwnedUpgrades();
-
     }
 }
 
-function createVirtualInventory() {
-    const inventoryGrid = document.getElementById('inventory');
-    const items = Object.entries(gameState.inventory).filter(([, count]) => count > 0);
-    
-    const visibleItems = items.slice(0, 50);
-    
-    inventoryGrid.innerHTML = visibleItems.map(([particle, count]) => `
-        <div class="inventory-item" draggable="true" data-particle="${particle}">
-            <div class="item-name">${getParticleDisplayName(particle)}</div>
-            <div class="item-count">${count}</div>
-        </div>
-    `).join('');
-    
-    inventoryGrid.querySelectorAll('.inventory-item').forEach(item => {
-        const particle = item.dataset.particle;
-        item.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', particle);
-            item.classList.add('dragging');
-        });
-        item.addEventListener('dragend', () => {
-            item.classList.remove('dragging');
+function startAutoSave() {
+    setInterval(() => {
+        saveGame();
+    }, 60000);
+}
+
+function initGame() {
+    loadGame();
+    setupClickerButtons();
+    setupFusionChamber();
+    setupSaveButtons();
+    updateInventory();
+    updateBlueprints();
+    updateGeneratorDisplay();
+    startGenerators();
+    updateOwnedUpgrades(); 
+    updateUI();
+    startAutoSave();
+    lastInventoryState = JSON.stringify(gameState.inventory);
+    lastGeneratorState = JSON.stringify(gameState.generators);
+}
+
+function setupClickerButtons() {
+    const clickerButtons = document.querySelectorAll('.clicker-btn');
+    clickerButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const particle = button.dataset.particle;
+            batchUpdate(() => {
+                gameState.inventory[particle]++;
+            });
         });
     });
 }
 
-function cleanupEventListeners() {
-    document.querySelectorAll('.blueprint-item, .shop-item, .inventory-item').forEach(item => {
-        item.replaceWith(item.cloneNode(true));
+function setupFusionChamber() {
+    const dropZone = document.getElementById('drop-zone');
+    const fusionBtn = document.getElementById('fusion-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
     });
-}
 
-function showSaveStatus(message, type) {
-    const statusElement = document.getElementById('save-status');
-    statusElement.textContent = message;
-    statusElement.style.color = type === 'success' ? '#38a169' : '#e53e3e';
-    
-    setTimeout(() => {
-        statusElement.textContent = '';
-    }, 3000);
-}
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
 
-function updateUI() {
-    const energyElement = document.getElementById('energy-count');
-    const newEnergyText = `Energy: ${gameState.inventory.energy}`;
-    
-    if (energyElement.textContent !== newEnergyText) {
-        energyElement.textContent = newEnergyText;
-    }
-    
-    if (gameState.energyUnlocked) {
-        const now = Date.now();
-        const timeSinceLastShopUpdate = now - (gameState.lastShopUpdate || 0);
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
         
-        if (timeSinceLastShopUpdate > 2000) {
-            updateShop();
-            gameState.lastShopUpdate = now;
+        const particleType = e.dataTransfer.getData('text/plain');
+        if (gameState.inventory[particleType] > 0) {
+            batchUpdate(() => {
+                gameState.inventory[particleType]--;
+                gameState.fusionChamber.push(particleType);
+                updateFusionChamber();
+            });
         }
-    }
-    
-    if (Date.now() - (gameState.lastUpgradeCheck || 0) > 5000) {
-        updateEnergyUpgrades();
-        gameState.lastUpgradeCheck = Date.now();
-    }
+    });
+
+    fusionBtn.addEventListener('click', performFusion);
+    cancelBtn.addEventListener('click', cancelFusion);
 }
 
-
-function getParticleDisplayName(particle) {
-    const displayNames = {
-        'up-quark': 'Up Quark',
-        'down-quark': 'Down Quark',
-        'electron': 'Electron',
-        'proton': 'Proton',
-        'neutron': 'Neutron',
-        '1H': 'Hydrogen-1',
-        '2H': 'Deuterium',
-        '3H': 'Tritium',
-        'He': 'Helium',
-        'energy': 'Energy',
-        'He+energy': 'Helium + Energy'
-    };
-    return displayNames[particle] || particle;
-}
-
-function showMessage(message, type) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `${type}-message`;
-    messageDiv.textContent = message;
-    
-    const fusionSection = document.querySelector('.fusion-section');
-    fusionSection.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 2000);
+function setupSaveButtons() {
+    document.getElementById('save-btn').addEventListener('click', saveGame);
+    document.getElementById('load-btn').addEventListener('click', loadGameDialog);
+    document.getElementById('new-game-btn').addEventListener('click', newGame);
 }
 
 document.addEventListener('DOMContentLoaded', initGame);
