@@ -90,7 +90,7 @@ const generatorCombinations = {
     '1H': { 'proton': 1, 'electron': 1 },
     '2H': { 'proton': 1, 'neutron': 1, 'electron': 1 },
     '3H': { 'proton': 1, 'neutron': 2, 'electron': 1 },
-    'He': { '2H': 1, '3H': 1 }
+    'He+neutron+energy': { '2H': 1, '3H': 1 }
 };
 
 const energyUpgradesList = [
@@ -311,7 +311,7 @@ function combineGenerators(particle) {
                 gameState.generators[requiredParticle] -= count;
             });
 
-            if (particle === 'He') {
+            if (particle === 'He+neutron+energy') {
                 gameState.generators['He']++;
                 gameState.generators['neutron']++;
                 gameState.generators['energy']++;
@@ -562,7 +562,6 @@ function rebuildBlueprints() {
         </div>
     `).join('');
     
-    // Add event listeners
     blueprintsGrid.querySelectorAll('.blueprint-item').forEach(item => {
         const blueprintName = item.dataset.blueprint;
         item.addEventListener('click', () => {
