@@ -80,7 +80,7 @@ header h1 {
 
 .main-content {
     display: grid;
-    grid-template-columns: 4fr 1fr 4fr;
+    grid-template-columns: 6fr 1.5fr 2.5fr;
     gap: 30px;
 }
 
@@ -501,6 +501,28 @@ section h2 {
 
 .blueprint-item.updating {
     pointer-events: none;
+}
+
+.fusion-chamber.blocked {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.drop-zone.blocked {
+    background-color: #2a2a2a;
+    border: 2px dashed #666;
+    color: #888;
+}
+
+.persistent-message {
+    position: relative;
+    z-index: 10;
+}
+
+.hint-message {
+    background-color: #4a5568;
+    color: #e2e8f0;
+    border-left: 4px solid #4299e1;
 }
 
 @keyframes fadeIn {
